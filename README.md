@@ -71,6 +71,7 @@ Reports are stored in `data\reports.db` (SQLite). Back up the `data` folder to k
 | `MAX_REPORTS_PER_HOUR` | `5` | Reports allowed per IP address per hour. |
 | `MAX_GEOCODES_PER_MINUTE` | `20` | Address searches allowed per IP address per minute. |
 | `DATA_DIR` | `./data` | Where the database and token are stored. Must be on a persistent disk when hosted. |
+| `CLIENT_IP_HEADER` | none | Header in which the host passes each visitor's real IP. `X-Real-IP` on PythonAnywhere (the setup file sets this for you). Only set it when the host always overwrites the header. |
 | `HOST` / `PORT` | `127.0.0.1` / `5000` (`app.py`), `0.0.0.0` / `8080` (`serve.py`) | Address and port to listen on. Most hosts set `PORT` for you. |
 
 These only apply to `serve.py`, the production server:
@@ -103,7 +104,63 @@ The site is one Python app that stores reports in a SQLite file. The host needs:
 recommended settings that are missing. `GET /healthz` returns `{"ok": true}` for the host's
 health checks.
 
-### Option A: Render (easiest, about US$7.25/month)
+### Free option: PythonAnywhere
+
+PythonAnywhere's free "Beginner" plan can run this site. The free plan's limits:
+- **One web app per account**, at `your-username.pythonanywhere.com`, with no custom domain. If
+  your account already hosts another site, create a separate free account for this one.
+  PythonAnywhere staff have said that's allowed, and you can use the same email address. When
+  several accounts share an email, sign in with the username.
+- **You must renew it every month.** Since January 2026, unused web apps on new free accounts
+  expire after 1 month. Log in, open the **Web** tab and click the button that extends it. If it
+  lapses, the site goes offline but your reports are kept. Set a monthly calendar reminder.
+- **Small allowances:** 100 CPU-seconds a day, low bandwidth and 512 MB of storage. That's enough for
+  a neighbourhood or small city. If you go over the CPU allowance, the site gets slower.
+- **Limited internet access:** free accounts can only reach allowlisted sites. OpenStreetMap's
+  address search (`nominatim.openstreetmap.org`) is on the list, so address lookup works.
+- **No direct support:** free accounts get help from the community forums only.
+
+**Steps** (replace `USERNAME` with your PythonAnywhere username):
+
+1. **Create the account** at [pythonanywhere.com](https://www.pythonanywhere.com) using the free
+   Beginner plan. The username becomes the web address, for example `doorkickwatch`.
+2. **Make a read-only GitHub token,** so PythonAnywhere can download your private repository. On
+   GitHub, go to **Settings → Developer settings → Personal access tokens → Fine-grained tokens →
+   Generate new token**. Under *Repository access*, choose **Only select repositories** and pick
+   `door-kick-watch`. Under *Permissions*, set **Contents** to **Read-only**. Copy the token.
+3. **Create the web app.** On PythonAnywhere, open the **Web** tab and choose **Add a new web app →
+   Next → Manual configuration** (not "Flask") **→ Python 3.12 → Next**. If 3.12 isn't offered,
+   pick the newest 3.x and use that version in step 4.
+4. **Download the code.** Open **Consoles → Bash** and run:
+   ```
+   git clone https://github.com/liuweitong1234-web/door-kick-watch.git
+   ```
+   For *Username*, type your GitHub username. For *Password*, paste the token. Nothing shows while
+   you paste. Then run:
+   ```
+   mkvirtualenv --python=/usr/bin/python3.12 dkw
+   pip install -r ~/door-kick-watch/requirements.txt
+   ```
+5. **Configure the web app** on the **Web** tab:
+   - **Virtualenv:** enter `/home/USERNAME/.virtualenvs/dkw`
+   - **Static files:** add URL `/static/` with directory `/home/USERNAME/door-kick-watch/static`.
+     This serves images and scripts without using your CPU allowance.
+   - **Security:** turn **Force HTTPS** on. The "Near me" button needs HTTPS.
+   - **WSGI configuration file:** click the link. Delete everything in the file and paste in
+     [`deploy/pythonanywhere_wsgi.py`](deploy/pythonanywhere_wsgi.py). Replace `YOUR_USERNAME`, fill
+     in your email, map location and country, then **Save**.
+6. **Start it:** press the green **Reload** button, then open `https://USERNAME.pythonanywhere.com`.
+7. **Get your admin token:** in the **Files** tab, open `door-kick-watch/data/admin_token.txt`. Use it
+   to sign in at `https://USERNAME.pythonanywhere.com/admin`.
+8. **Test it:** submit a report, check it on the map and in the admin page, then delete it there.
+
+**Updating later:** push your changes to GitHub, then in a PythonAnywhere Bash console run
+`cd ~/door-kick-watch && git pull`, and press **Reload** on the Web tab.
+
+**If something's wrong:** the **Web** tab links to an *error log*. Most problems are a typo in the
+WSGI file or a virtualenv path that doesn't match.
+
+### Paid option A: Render (easiest, about US$7.25/month)
 `render.yaml` sets everything up: the web service, a 1 GB disk for reports, health checks, and a
 randomly generated admin token. Render needs a paid "Starter" instance to attach a disk.
 
@@ -116,7 +173,7 @@ randomly generated admin token. Render needs a paid "Starter" instance to attach
 
 Render takes daily snapshots of the disk. For your own backup, use **Download CSV** on the admin page.
 
-### Option B: Docker (Railway, Fly.io, a VPS, anywhere)
+### Paid option B: Docker (Railway, Fly.io, a VPS, anywhere)
 ```
 docker build -t door-kick-watch .
 docker run -d -p 8080:8080 --env-file .env -v dkw-data:/data --restart unless-stopped door-kick-watch
@@ -154,6 +211,7 @@ serve.py            Production launcher (Waitress), checks settings before start
 Dockerfile          Container image for Docker-based hosts
 render.yaml         One-click Render setup (web service + disk + settings)
 .env.example        Template for the settings file used with Docker
+deploy/pythonanywhere_wsgi.py  Setup file to paste into PythonAnywhere (free hosting)
 static/index.html   Public map page and report form
 static/app.js       Public page logic
 static/admin.html   Moderator & police view

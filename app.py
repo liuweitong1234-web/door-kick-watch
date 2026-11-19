@@ -58,6 +58,10 @@ MAX_REPORTS_PER_HOUR = int(os.environ.get("MAX_REPORTS_PER_HOUR", "5"))
 MAX_GEOCODES_PER_MINUTE = int(os.environ.get("MAX_GEOCODES_PER_MINUTE", "20"))
 # Reverse-proxy handling (TRUST_PROXY / PROXY_COUNT) lives in serve.py, because Waitress
 # strips X-Forwarded-* headers before the app sees them unless it is told to trust them.
+# Hosts that run the app on their own server (PythonAnywhere) instead pass the visitor's IP in a
+# header: set CLIENT_IP_HEADER=X-Real-IP there. Only set it when the host's proxy always
+# overwrites that header; otherwise visitors could fake it to dodge rate limits.
+CLIENT_IP_HEADER = os.environ.get("CLIENT_IP_HEADER", "").strip()
 
 STATUSES = ("new", "verified", "forwarded", "rejected")
 PEOPLE_CHOICES = ("", "1", "2-3", "4+")
@@ -167,9 +171,17 @@ def parse_iso(value):
     return dt
 
 
+def client_ip():
+    if CLIENT_IP_HEADER:
+        # Take the last entry: it's the one added by the host's own proxy.
+        value = request.headers.get(CLIENT_IP_HEADER, "").rsplit(",", 1)[-1].strip()
+        if value:
+            return value[:64]
+    return request.remote_addr or "unknown"
+
+
 def client_ip_hash():
-    ip = request.remote_addr or "unknown"
-    return hashlib.sha256(IP_SALT + ip.encode()).hexdigest()[:32]
+    return hashlib.sha256(IP_SALT + client_ip().encode()).hexdigest()[:32]
 
 
 def clean_text(value, max_len):
