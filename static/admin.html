@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Moderator &amp; police view · Door Kick Watch</title>
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+  <link rel="stylesheet" href="/static/style.css">
+  <link rel="stylesheet" href="/static/admin.css">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+          integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin="" defer></script>
+  <script src="/static/admin.js" defer></script>
+</head>
+<body class="admin">
+  <header class="topbar">
+    <a class="brand" href="/">
+      <img src="/static/favicon.svg" alt="" width="34" height="34">
+      <span>
+        <span class="brand-name">Door Kick Watch</span>
+        <span class="brand-tag">Moderator &amp; police view — full report details</span>
+      </span>
+    </a>
+    <button class="btn" id="sign-out" type="button" hidden>Sign out</button>
+  </header>
+
+  <section class="login" id="login">
+    <form class="login-card" id="login-form">
+      <h1>Moderator &amp; police access</h1>
+      <p>Enter the access token from the site operator. It’s kept only in this browser tab.</p>
+      <div class="field">
+        <label for="token">Access token</label>
+        <input id="token" type="password" autocomplete="current-password" required>
+      </div>
+      <p class="form-error" id="login-error" role="alert" hidden></p>
+      <button class="btn btn-primary" type="submit">Sign in</button>
+    </form>
+  </section>
+
+  <main class="admin-main" id="dashboard" hidden>
+    <div class="admin-top">
+      <div class="admin-map" id="admin-map" aria-label="Exact locations of reports"></div>
+      <aside class="hotspots">
+        <h2>Hotspot streets</h2>
+        <p class="hint">Last 30 days, excluding rejected reports.</p>
+        <ol id="hotspots"></ol>
+        <h2>By time of day</h2>
+        <div class="hours" id="hours" aria-label="Reports by hour of day, last 30 days"></div>
+        <div class="hours-axis"><span>12a</span><span>6a</span><span>12p</span><span>6p</span><span>12a</span></div>
+      </aside>
+    </div>
+
+    <div class="toolbar">
+      <label class="field-inline"><span>Status</span>
+        <select id="status-filter">
+          <option value="">All except rejected</option>
+          <option value="new">New</option>
+          <option value="verified">Verified</option>
+          <option value="forwarded">Forwarded to police</option>
+          <option value="rejected">Rejected</option>
+          <option value="*">Everything</option>
+        </select>
+      </label>
+      <input class="search" id="search" type="search" placeholder="Search address, details, report #">
+      <span class="count" id="count"></span>
+      <button class="btn btn-primary" id="export" type="button">Download CSV for police</button>
+    </div>
+
+    <div class="table-wrap">
+      <table class="reports">
+        <thead>
+          <tr>
+            <th>Happened</th>
+            <th>Address</th>
+            <th>People</th>
+            <th>Damage</th>
+            <th>Footage</th>
+            <th>Police #</th>
+            <th>Details</th>
+            <th>Contact</th>
+            <th>Submitted</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+  </main>
+
+  <div class="toast" id="toast" role="status" hidden></div>
+</body>
+</html>

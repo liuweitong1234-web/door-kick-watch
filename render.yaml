@@ -1,0 +1,33 @@
+# Render Blueprint: https://render.com/docs/blueprint-spec
+# In the Render dashboard choose New > Blueprint and pick this repository.
+# Render asks for the values marked `sync: false` while it creates the service.
+services:
+  - type: web
+    name: door-kick-watch
+    runtime: python
+    # A persistent disk (needed to keep reports between deploys) requires a paid instance.
+    plan: starter
+    buildCommand: pip install -r requirements.txt
+    startCommand: python serve.py
+    healthCheckPath: /healthz
+    disk:
+      name: reports
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.7
+      - key: DATA_DIR
+        value: /var/data
+      - key: TRUST_PROXY
+        value: "1"
+      - key: ADMIN_TOKEN
+        generateValue: true   # Render creates a random token; copy it from the Environment tab
+      - key: GEOCODER_USER_AGENT
+        sync: false           # e.g. DoorKickWatch/1.0 (https://yoursite.org; you@yoursite.org)
+      - key: CONTACT_EMAIL
+        sync: false           # shown on the privacy page
+      - key: DEFAULT_VIEW
+        sync: false           # your town as lat,lng,zoom, e.g. 40.71,-74.00,12
+      - key: COUNTRY_CODES
+        sync: false           # e.g. us  (leave blank for worldwide address search)

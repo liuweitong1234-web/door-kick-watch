@@ -1,0 +1,7 @@
+.venv/
+__pycache__/
+*.pyc
+# Report database and the generated admin token - never commit these.
+data/
+# Real settings (tokens, emails). Commit .env.example instead.
+.env

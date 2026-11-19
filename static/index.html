@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Door Kick Watch</title>
+  <meta name="description" content="Community map of door-kicking “challenge” incidents. Report what happened at your door and see activity near you.">
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+          integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin="" defer></script>
+  <script src="/static/app.js" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/">
+      <img src="/static/favicon.svg" alt="" width="34" height="34">
+      <span>
+        <span class="brand-name" id="site-name">Door Kick Watch</span>
+        <span class="brand-tag">Community reports of door-kicking “challenge” incidents</span>
+      </span>
+    </a>
+    <button class="btn btn-primary" id="open-report" type="button">Report an incident</button>
+  </header>
+
+  <p class="notice" role="note">
+    <strong>Happening right now?</strong> Call your local emergency number (e.g. 911). This site isn’t monitored in real time.
+  </p>
+
+  <main class="layout">
+    <aside class="sidebar" aria-label="Reports">
+      <div class="controls">
+        <label class="field-inline">
+          <span>Showing</span>
+          <select id="range">
+            <option value="1">last 24 hours</option>
+            <option value="7">last 7 days</option>
+            <option value="30" selected>last 30 days</option>
+            <option value="90">last 90 days</option>
+            <option value="365">last year</option>
+          </select>
+        </label>
+        <button class="btn" id="near-me" type="button">
+          <svg aria-hidden="true" viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8Zm9 3h-2.06A7 7 0 0 0 13 5.06V3h-2v2.06A7 7 0 0 0 5.06 11H3v2h2.06A7 7 0 0 0 11 18.94V21h2v-2.06A7 7 0 0 0 18.94 13H21v-2Zm-9 6a5 5 0 1 1 0-10 5 5 0 0 1 0 10Z"/></svg>
+          Near me
+        </button>
+      </div>
+
+      <div class="stats" aria-live="polite">
+        <div class="stat"><span class="stat-num" id="stat-total">–</span><span class="stat-lbl">reports in period</span></div>
+        <div class="stat"><span class="stat-num" id="stat-24h">–</span><span class="stat-lbl">in last 24 hours</span></div>
+        <div class="stat stat-wide"><span class="stat-num" id="stat-peak">–</span><span class="stat-lbl">most common time of day (needs 3+ reports)</span></div>
+      </div>
+
+      <div class="near-summary" id="near-summary" hidden></div>
+
+      <section class="list-section">
+        <h2>Latest reports</h2>
+        <ol class="report-list" id="report-list"></ol>
+        <p class="empty" id="empty" hidden>No reports in this period yet.</p>
+      </section>
+
+      <footer class="sidebar-foot">
+        <div class="legend" aria-label="Map legend">
+          <span><i class="dot dot-24h"></i>Last 24 h</span>
+          <span><i class="dot dot-7d"></i>Last 7 days</span>
+          <span><i class="dot dot-old"></i>Older</span>
+        </div>
+        <p>Locations are shown at block level to protect residents’ privacy. Exact addresses are only shared with moderators and police.</p>
+        <p><a href="/privacy">Privacy</a> · <a href="/admin">Moderator &amp; police access</a></p>
+      </footer>
+    </aside>
+
+    <div class="map" id="map" role="region" aria-label="Map of reported incidents"></div>
+  </main>
+
+  <dialog class="report-dialog" id="report-dialog" aria-labelledby="report-title">
+    <form id="report-form" novalidate>
+      <header class="dialog-head">
+        <h2 id="report-title">Report an incident</h2>
+        <button class="icon-btn" type="button" id="close-report" aria-label="Close">
+          <svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M18.3 5.7 12 12l6.3 6.3-1.4 1.4L10.6 13.4 4.3 19.7l-1.4-1.4L9.2 12 2.9 5.7l1.4-1.4 6.3 6.3 6.3-6.3z"/></svg>
+        </button>
+      </header>
+
+      <div class="dialog-body">
+        <div class="field">
+          <label for="address">Address where it happened <span class="req" aria-hidden="true">*</span></label>
+          <div class="input-row">
+            <input id="address" name="address" type="text" autocomplete="street-address" maxlength="200"
+                   placeholder="e.g. 1234 Main St, Springfield" required>
+            <button class="btn" type="button" id="find-address">Find</button>
+          </div>
+          <ul class="candidates" id="candidates" hidden></ul>
+          <p class="hint" id="pin-hint">Press <b>Find</b> to drop a pin, then drag it if needed. Can’t find the address? Click the map to place the pin.</p>
+          <div class="mini-map" id="mini-map" aria-label="Pick the location on the map"></div>
+        </div>
+
+        <div class="field">
+          <label for="occurred">When did it happen? <span class="req" aria-hidden="true">*</span></label>
+          <input id="occurred" type="datetime-local" required>
+        </div>
+
+        <div class="field">
+          <label for="people">How many people were involved?</label>
+          <select id="people">
+            <option value="">Not sure</option>
+            <option value="1">1</option>
+            <option value="2-3">2–3</option>
+            <option value="4+">4 or more</option>
+          </select>
+        </div>
+
+        <label class="check"><input type="checkbox" id="damage"> The door or property was damaged</label>
+        <label class="check"><input type="checkbox" id="footage"> I have doorbell or security-camera footage</label>
+
+        <fieldset class="private">
+          <legend>
+            <svg aria-hidden="true" viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M17 9V7A5 5 0 0 0 7 7v2H5v13h14V9h-2ZM9 7a3 3 0 0 1 6 0v2H9V7Z"/></svg>
+            Private — only moderators and police see these
+          </legend>
+          <div class="field">
+            <label for="police-no">Police report number <span class="opt">(optional)</span></label>
+            <input id="police-no" type="text" maxlength="60" autocomplete="off">
+          </div>
+          <div class="field">
+            <label for="details">What happened? <span class="opt">(optional)</span></label>
+            <textarea id="details" rows="3" maxlength="1000" placeholder="e.g. Two loud kicks around 11 pm, ran toward the park."></textarea>
+          </div>
+          <div class="field">
+            <label for="contact">Email or phone, so police can follow up <span class="opt">(optional)</span></label>
+            <input id="contact" type="text" maxlength="120" autocomplete="email">
+          </div>
+        </fieldset>
+
+        <div class="hp" aria-hidden="true">
+          <label for="website">Leave this empty</label>
+          <input id="website" type="text" tabindex="-1" autocomplete="off">
+        </div>
+
+        <p class="hint caution">Please don’t name or describe the people involved — many are minors. Share footage directly with police instead. <a href="/privacy" target="_blank">Who sees what</a></p>
+
+        <label class="check"><input type="checkbox" id="confirm" required> This report is accurate to the best of my knowledge <span class="req" aria-hidden="true">*</span></label>
+
+        <p class="form-error" id="form-error" role="alert" hidden></p>
+      </div>
+
+      <footer class="dialog-foot">
+        <button class="btn" type="button" id="cancel-report">Cancel</button>
+        <button class="btn btn-primary" type="submit" id="submit-report">Submit report</button>
+      </footer>
+    </form>
+  </dialog>
+
+  <div class="toast" id="toast" role="status" hidden></div>
+</body>
+</html>
